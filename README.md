@@ -3,5 +3,5 @@ http://trin-hosts.trin.cam.ac.uk/clock/data/2008/
 ...
 http://trin-hosts.trin.cam.ac.uk/clock/data/2019/
 
-on linux use wget -r http://trin-hosts.trin.cam.ac.uk/clock/data/2008/
+on linux use "wget -r http://trin-hosts.trin.cam.ac.uk/clock/data/2008/"
 ...
