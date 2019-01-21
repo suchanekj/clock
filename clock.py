@@ -1,8 +1,3 @@
-# Ideas for joining
-# 1) just average of slopes
-# 2) find intercept for interval, then add another data value for intercepts, do regression overall
-# http://faculty.franklin.uga.edu/amandal/sites/faculty.franklin.uga.edu.amandal/files/Effective_Statistical_Methods_for_Big_Data_Analytics.pdf
-
 import os
 import shutil
 import numpy as np
@@ -12,19 +7,19 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 
 # import download
-import config
+from config import *
 
 data = {}
-loadedDataStart = config.startTime
+loadedDataStart = START_TIME
 
 
 def load_downloads(memory=180):
     global loadedDataStart
     global data
-    loadedDataStart = config.startTime
+    loadedDataStart = START_TIME
     endTimestamp = int(time.time() + 1e6)
-    for i in config.dataFormat:
-        data[i] = np.empty(int((endTimestamp - config.startTime) / config.timeStep))
+    for i in DATA_FORMAT:
+        data[i] = np.empty(int((endTimestamp - START_TIME) / TIME_STEP))
         data[i][:] = np.nan
     x = os.walk("downloads")
     for i in x:
@@ -47,7 +42,7 @@ def load_downloads(memory=180):
                             f[a] = list(map(float, f[a].split(' ')))
                         for line in f:
                             try:
-                                timestamp = int(round((line[0] - config.startTime) / config.timeStep))
+                                timestamp = int(round((line[0] - START_TIME) / TIME_STEP))
                                 if timestamp < 0:
                                     continue
                                 if (name == "clock" or name == "clockdata"):
@@ -88,11 +83,11 @@ def load_downloads(memory=180):
                     pass
     value = {}
     age = {}
-    for i in config.dataFormat[1:]:
+    for i in DATA_FORMAT[1:]:
         age[i] = 0
         value[i] = 0
-    for i in range(len(data[config.dataFormat[0]])):
-        for j in config.dataFormat[1:]:
+    for i in range(len(data[DATA_FORMAT[0]])):
+        for j in DATA_FORMAT[1:]:
             if not np.isnan(data[j][i]):
                 age[j] = memory
                 value[j] = data[j][i]
@@ -100,22 +95,22 @@ def load_downloads(memory=180):
                 data[j][i] = value[j]
             age[j] -= 1
 
-    for j in config.dataFormat[1:]:
+    for j in DATA_FORMAT[1:]:
         if len(j.split("_")) != 2:
             continue
         if j.split("_")[1] == "int":
             data[j][0] = data[j.split("_")[0]][0]
-    for i in range(1, len(data[config.dataFormat[0]])):
-        for j in config.dataFormat[1:]:
+    for i in range(1, len(data[DATA_FORMAT[0]])):
+        for j in DATA_FORMAT[1:]:
             if len(j.split("_")) != 2:
                 continue
             if j.split("_")[1] == "int":
                 if np.isnan(data[j.split("_")[0]][i]) and not np.isnan(data[j][i-1]):
-                    data[j][i] = config.integrationFactor * data[j][i-1]
+                    data[j][i] = INTEGRATION_FACTOR * data[j][i-1]
                 elif not np.isnan(data[j.split("_")[0]][i]) and np.isnan(data[j][i-1]):
                     data[j][i] = data[j.split("_")[0]][i]
                 elif not np.isnan(data[j.split("_")[0]][i]) and not np.isnan(data[j][i-1]):
-                    data[j][i] = data[j.split("_")[0]][i] + config.integrationFactor * data[j][i-1]
+                    data[j][i] = data[j.split("_")[0]][i] + INTEGRATION_FACTOR * data[j][i-1]
 
     try:
         for i in range(1, len(driftHistory) - 1):
@@ -123,10 +118,10 @@ def load_downloads(memory=180):
                 if datetime.fromtimestamp(int(driftHistory[i][0])).strftime('%Y-%m-%d') !=\
                    datetime.fromtimestamp(int(driftHistory[i + 1][0])).strftime('%Y-%m-%d'):
                     continue
-                timestamp1 = int(round((int(driftHistory[i + 1][0]) - 3600 - config.startTime) / config.timeStep))
-                timestamp2 = int(round((int(driftHistory[i][0]) + 7200 - config.startTime) / config.timeStep))
+                timestamp1 = int(round((int(driftHistory[i + 1][0]) - 3600 - START_TIME) / TIME_STEP))
+                timestamp2 = int(round((int(driftHistory[i][0]) + 7200 - START_TIME) / TIME_STEP))
                 for j in range(timestamp1, timestamp2):
-                    for a in config.dataFormat[1:]:
+                    for a in DATA_FORMAT[1:]:
                         data[a][j] = np.nan
             except Exception as e:
                 print(e)
@@ -134,16 +129,16 @@ def load_downloads(memory=180):
     except Exception as e:
         print(e)
         pass
-    for i in range(len(data[config.dataFormat[0]])):
-        timestamp = i * config.timeStep + config.startTime
+    for i in range(len(data[DATA_FORMAT[0]])):
+        timestamp = i * TIME_STEP + START_TIME
         if i == 0 or datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d') !=\
-                datetime.fromtimestamp(timestamp - config.timeStep).strftime('%Y-%m-%d'):
+                datetime.fromtimestamp(timestamp - TIME_STEP).strftime('%Y-%m-%d'):
             if i != 0: f.close()
             f = open("data/" + datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d') + ".txt", "w+")
         f.write(str(timestamp) + " ")
-        for col in range(len(config.dataFormat)):
-            f.write(str(data[config.dataFormat[col]][i]))
-            if col != len(config.dataFormat) - 1:
+        for col in range(len(DATA_FORMAT)):
+            f.write(str(data[DATA_FORMAT[col]][i]))
+            if col != len(DATA_FORMAT) - 1:
                 f.write(" ")
         f.write("\n")
 
@@ -155,13 +150,13 @@ def func(X, *arg):
 def denseGraph(start, end, plot=True):
     start = int(start)
     end = int(end)
-    for i in config.dataFormat:
-        data[i] = np.empty(int((end - start) / config.timeStep))
+    for i in DATA_FORMAT:
+        data[i] = np.empty(int((end - start) / TIME_STEP))
 
     j = 0
-    for i in range(start, end, config.timeStep):
+    for i in range(start, end, TIME_STEP):
         if i == start or datetime.fromtimestamp(i).strftime('%Y-%m-%d') !=\
-                datetime.fromtimestamp(i - config.timeStep).strftime('%Y-%m-%d'):
+                datetime.fromtimestamp(i - TIME_STEP).strftime('%Y-%m-%d'):
             f = open("data/" + datetime.fromtimestamp(i).strftime('%Y-%m-%d') + ".txt", "r")
             f = f.readlines()
             a = 0
@@ -169,7 +164,7 @@ def denseGraph(start, end, plot=True):
 
         skip = False
         for b in range(len(f[a]) - 1):
-            data[config.dataFormat[b]][j] = f[a][b + 1]
+            data[DATA_FORMAT[b]][j] = f[a][b + 1]
             if np.isnan(f[a][b + 1]):
                 skip = True
         a += 1
@@ -177,25 +172,47 @@ def denseGraph(start, end, plot=True):
             continue
         j += 1
 
-    for a in config.dataFormat:
+    for a in DATA_FORMAT:
         data[a] = data[a][0:j]
 
-    X = tuple(np.array([a(data, i) for i in range(len(data[config.dataFormat[0]]) - 1)]) for a in config.fitable)
+
+    X = tuple(np.array([a(data, i) for i in range(len(data[DATA_FORMAT[0]]) - 1)]) for a in FITABLE)
+    Y = np.array([VALUE(data, i) for i in range(len(data[DATA_FORMAT[0]]) - 1)])
+    p0 = np.zeros(len(X) + 1)
+    p1, pcov = curve_fit(func, X, Y, p0)
+
+    # Remove readings caused by systematic error
+    pstd = np.sqrt(np.diag(pcov))
+    std = sum(pstd)  # probably wrong !!!!!!!!!!!!!!!!!!!!!!!!!
+    print(std)
+    Z = np.transpose(np.array(X))
+    to_delete = []
+    print(p1)
+    for i in range(len(Y)):
+        predicted = func(Z[i], *p1)
+        # print(Z[i], predicted, Y[i])
+        if abs(predicted - Y[i]) > std * N_SIGMA_CUTOFF / 100: # !!!!!!!!!!!!!!!!!!!!
+            to_delete.append(i)
+    Y = np.delete(Y, to_delete)
+    X = list(X)
+    for i in range(len(X)):
+        X[i] = np.delete(X[i], to_delete)
+    X = tuple(X)
+    # print(X)
+    print(len(to_delete))
+    popt = curve_fit(func, X, Y, p0)[0]
+
+    # print(Y)
     minX = tuple(np.min(a) for a in X)
     maxX = tuple(np.max(a) for a in X)
-    Y = np.array([config.value(data, i) for i in range(len(data[config.dataFormat[0]]) - 1)])
     minY = np.min(Y)
     maxY = np.max(Y)
-    p0 = np.zeros(len(X) + 1)
-    p1 = curve_fit(func, X, Y, p0)[0]
-
-    print(Y)
-    print("zero value: " + str(p1[0]))
-    for i in range(len(config.fitableNames) - 10):
-        print(config.fitableNames[i] + ": " + str(p1[i + 1]))
-        plt.plot([minX[i], maxX[i]], [(minY + maxY) / 2 - (maxX[i] - minX[i]) / 2 * p1[1 + i],
-                                      (minY + maxY) / 2 + (maxX[i] - minX[i]) / 2 * p1[1 + i]],
-                 'g--', label = 'fit: a=%5.3f' % p1[1 + i])
+    print("zero value: " + str(popt[0]))
+    for i in range(len(FITABLE_NAMES)):
+        print(FITABLE_NAMES[i] + ": " + str(popt[i + 1]))
+        plt.plot([minX[i], maxX[i]], [(minY + maxY) / 2 - (maxX[i] - minX[i]) / 2 * popt[1 + i],
+                                      (minY + maxY) / 2 + (maxX[i] - minX[i]) / 2 * popt[1 + i]],
+                 'g--', label = 'fit: a=%5.3f' % popt[1 + i])
         plt.plot(X[i], Y, 'bx', label = 'data')
         plt.show()
         plt.clf()
@@ -203,4 +220,4 @@ def denseGraph(start, end, plot=True):
 
 # download.autorun()
 # load_downloads()
-denseGraph(1532822400, 1532822400 + 3600 * 24 * 0.5) # 2018-07-29
+denseGraph(1532822400, 1532822400 + 3600 * 24 * 1) # 2018-07-29
